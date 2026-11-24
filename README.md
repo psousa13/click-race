@@ -2,6 +2,8 @@
 
 Jogo multijogador em tempo real, feito com Node.js, Express e Socket.IO. Cada jogador clica o mais depressa possível para fazer avançar a sua barra até à meta. O primeiro a chegar vence.
 
+Jogo online: https://click-race-5845.onrender.com
+
 ## Funcionalidades implementadas
 
 1. Salas com código de 4 letras, de 2 a 5 jogadores.
@@ -11,6 +13,8 @@ Jogo multijogador em tempo real, feito com Node.js, Express e Socket.IO. Cada jo
 5. Contagem de cliques no servidor (servidor autoritativo), com limite de 15 cliques por segundo.
 6. Classificação final e opção de jogar outra vez.
 7. Se o anfitrião sai, o jogador seguinte passa a anfitrião. Se sobrar um só jogador durante a contagem, a sala volta ao lobby, e durante a corrida esse jogador vence.
+8. Resposta imediata nos cliques do próprio jogador: a barra avança logo e o servidor confirma a posição real a cada clique.
+9. Ligação apenas por WebSocket e posições dos jogadores enviadas no máximo a cada 50 ms por sala, para a corrida ficar fluida mesmo com latência.
 
 ## Requisitos
 
@@ -34,14 +38,14 @@ Abrir `http://localhost:3000`. O estado do servidor pode ser confirmado em `http
 
 ## Eventos Socket.IO
 
-Cliente para servidor. Os pedidos com resposta devolvem `{ ok: true }` ou `{ error: "mensagem" }`.
+Cliente para servidor. Os pedidos com resposta devolvem `{ ok: true }` ou `{ error: "mensagem" }`, exceto o `click`.
 
 | Evento | Dados | Descrição |
 |---|---|---|
 | `createRoom` | `{ name }` | Cria uma sala e entra nela como anfitrião |
 | `joinRoom` | `{ name, code }` | Entra numa sala em estado de lobby |
 | `start` | nenhum | O anfitrião inicia a contagem decrescente |
-| `click` | nenhum | Conta um clique, só durante a corrida |
+| `click` | nenhum | Conta um clique, só durante a corrida. A resposta é a posição atual do jogador, ou `null` se o clique foi ignorado |
 | `playAgain` | nenhum | O anfitrião devolve a sala ao lobby |
 | `leaveRoom` | nenhum | Sai da sala |
 
@@ -52,7 +56,7 @@ Servidor para cliente:
 | `room` | estado da sala | Estado completo: código, jogadores, fase e classificação |
 | `countdown` | número | Segundos que faltam para começar |
 | `go` | nenhum | A corrida começou |
-| `state` | lista de `{ id, position }` | Posição de cada jogador, a cada clique |
+| `state` | lista de `{ id, position }` | Posição de cada jogador, no máximo a cada 50 ms |
 
 ## Estrutura
 
@@ -63,6 +67,18 @@ src/rooms.js       salas, jogadores e estado público
 src/game.js        contagem, cliques e fim da corrida
 public/            cliente (HTML, JavaScript e CSS)
 ~~~
+
+## Deploy
+
+O jogo está publicado no Render, como um único Web Service (o Express serve o cliente e o Socket.IO no mesmo processo).
+
+1. Repositório ligado ao Render, ramo `main`.
+2. Build Command: `npm install`. Start Command: `npm start`.
+3. Health Check Path: `/api/health`.
+4. Não são precisas variáveis de ambiente: o Render define a `PORT`.
+5. Cada push para `main` faz um novo deploy automático.
+
+O plano gratuito adormece após inatividade, por isso o primeiro acesso pode demorar cerca de 1 minuto. As salas ficam em memória, por isso um reinício ou um novo deploy termina os jogos em curso.
 
 ## Uso de IA
 

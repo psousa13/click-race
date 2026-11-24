@@ -1,0 +1,8 @@
+module.exports = {
+  MIN_PLAYERS: 2,
+  MAX_PLAYERS: 5,
+  GOAL: 100,
+  COUNTDOWN_SECONDS: 3,
+  MAX_CLICKS_PER_SECOND: 15,
+  CODE_LENGTH: 4
+}

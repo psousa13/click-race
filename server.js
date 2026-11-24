@@ -46,9 +46,9 @@ io.on('connection', (socket) => {
     game.startCountdown(io, result.room)
   })
 
-  socket.on('click', () => {
+  socket.on('click', (data, cb) => {
     const room = rooms.findBySocket(socket.id)
-    if (room) game.click(io, room, socket.id)
+    reply(cb, room ? game.click(io, room, socket.id) : null)
   })
 
   socket.on('playAgain', (data, cb) => {

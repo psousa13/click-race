@@ -1,6 +1,8 @@
 const { GOAL, COUNTDOWN_SECONDS, MAX_CLICKS_PER_SECOND, MIN_PLAYERS } = require('./constants')
 const { publicRoom } = require('./rooms')
 
+const STATE_INTERVAL_MS = 50
+
 function emitRoom(io, room) {
   io.to(room.code).emit('room', publicRoom(room))
 }
@@ -27,17 +29,30 @@ function finish(io, room) {
   emitRoom(io, room)
 }
 
+function scheduleState(io, room) {
+  if (room.stateTimer) return
+  room.stateTimer = setTimeout(() => {
+    room.stateTimer = null
+    if (room.status !== 'racing') return
+    io.to(room.code).emit('state', [...room.players.entries()].map(([id, p]) => ({ id, position: p.position })))
+  }, STATE_INTERVAL_MS)
+}
+
 function click(io, room, socketId) {
-  if (room.status !== 'racing') return
+  if (room.status !== 'racing') return null
   const player = room.players.get(socketId)
-  if (!player) return
+  if (!player) return null
   const now = Date.now()
   player.clicks = player.clicks.filter((t) => now - t < 1000)
-  if (player.clicks.length >= MAX_CLICKS_PER_SECOND) return
+  if (player.clicks.length >= MAX_CLICKS_PER_SECOND) return player.position
   player.clicks.push(now)
   player.position++
-  if (player.position >= GOAL) return finish(io, room)
-  io.to(room.code).emit('state', [...room.players.entries()].map(([id, p]) => ({ id, position: p.position })))
+  if (player.position >= GOAL) {
+    finish(io, room)
+    return player.position
+  }
+  scheduleState(io, room)
+  return player.position
 }
 
 function afterLeave(io, room) {

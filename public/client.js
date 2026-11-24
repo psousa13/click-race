@@ -1,10 +1,14 @@
-const socket = io()
+const socket = io({ transports: ['websocket'] })
 const COLORS = ['#ff6b57', '#ffb938', '#4ade80', '#38bdf8', '#ff7ab8']
 const VIEWS = ['home', 'lobby', 'countdown', 'race', 'results']
+const MAX_CLICKS_PER_SECOND = 14
 const $ = (id) => document.getElementById(id)
 
 let room = null
 let count = ''
+let myBase = 0
+let pending = 0
+let sent = []
 const bars = new Map()
 
 function show(view) {
@@ -59,8 +63,20 @@ function renderLobby() {
 function updateBars(players) {
   for (const p of players) {
     const fill = bars.get(p.id)
-    if (fill) fill.style.width = Math.min(100, (p.position / room.goal) * 100) + '%'
+    if (!fill) continue
+    const pos = p.id === socket.id ? Math.max(p.position, myBase + pending) : p.position
+    fill.style.width = Math.min(100, (pos / room.goal) * 100) + '%'
   }
+}
+
+function paintMine() {
+  updateBars(room.players.filter((p) => p.id === socket.id))
+}
+
+function resetMine() {
+  myBase = 0
+  pending = 0
+  sent = []
 }
 
 function buildTrack() {
@@ -112,6 +128,7 @@ function renderResults() {
 
 function render() {
   if (!room) return show('home')
+  if (room.status === 'lobby' || room.status === 'countdown') resetMine()
   if (room.status === 'lobby') {
     renderLobby()
     return show('lobby')
@@ -127,6 +144,37 @@ function render() {
   }
   renderResults()
   show('results')
+}
+
+function sendClick() {
+  if (!room || room.status !== 'racing') return
+  const now = Date.now()
+  sent = sent.filter((t) => now - t < 1000)
+  if (sent.length >= MAX_CLICKS_PER_SECOND) return
+  sent.push(now)
+  pending++
+  paintMine()
+  socket.emit('click', null, (pos) => {
+    pending = Math.max(0, pending - 1)
+    if (typeof pos === 'number') myBase = pos
+    if (room && room.status === 'racing') paintMine()
+  })
+}
+
+function copyText(text) {
+  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text)
+  return new Promise((resolve, reject) => {
+    const area = document.createElement('textarea')
+    area.value = text
+    area.style.position = 'fixed'
+    area.style.opacity = '0'
+    document.body.append(area)
+    area.select()
+    const ok = document.execCommand('copy')
+    area.remove()
+    if (ok) resolve()
+    else reject(new Error('copy failed'))
+  })
 }
 
 socket.on('connect', () => { $('conn').textContent = 'Ligado' })
@@ -158,32 +206,6 @@ $('again').onclick = () => request('playAgain')
 $('leave').onclick = () => request('leaveRoom', null, () => { room = null; render() })
 $('exit').onclick = () => request('leaveRoom', null, () => { room = null; render() })
 
-$('tap').addEventListener('pointerdown', (e) => {
-  e.preventDefault()
-  if (room && room.status === 'racing') socket.emit('click')
-})
-document.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && !e.repeat && room && room.status === 'racing') {
-    e.preventDefault()
-    socket.emit('click')
-  }
-})
-function copyText(text) {
-  if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text)
-  return new Promise((resolve, reject) => {
-    const area = document.createElement('textarea')
-    area.value = text
-    area.style.position = 'fixed'
-    area.style.opacity = '0'
-    document.body.append(area)
-    area.select()
-    const ok = document.execCommand('copy')
-    area.remove()
-    if (ok) resolve()
-    else reject(new Error('copy failed'))
-  })
-}
-
 let copyTimer
 $('copy').onclick = () => {
   if (!room) return
@@ -193,3 +215,14 @@ $('copy').onclick = () => {
     copyTimer = setTimeout(() => { $('copy').textContent = 'Copiar' }, 1500)
   }).catch(() => { $('msg').textContent = 'Não foi possível copiar.' })
 }
+
+$('tap').addEventListener('pointerdown', (e) => {
+  e.preventDefault()
+  sendClick()
+})
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && !e.repeat && room && room.status === 'racing') {
+    e.preventDefault()
+    sendClick()
+  }
+})

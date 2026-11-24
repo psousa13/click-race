@@ -3,13 +3,64 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="description" content="Corrida de cliques em tempo real para 2 a 5 jogadores.">
+<meta name="theme-color" content="#0e0f12">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16'%3E%3Ccircle cx='8' cy='8' r='7' fill='%23d9f24a'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,500..800&family=DM+Mono:wght@400;500&display=swap" rel="stylesheet">
 <title>Click Race</title>
 <link rel="stylesheet" href="style.css">
 </head>
 <body>
 <main>
+<header>
 <h1>Click Race</h1>
-<p id="status">A ligar...</p>
+<p class="tag">Corrida de cliques para 2 a 5 jogadores.</p>
+<p id="conn">A ligar...</p>
+</header>
+<p id="msg" role="alert"></p>
+
+<section id="home">
+<input id="name" maxlength="16" placeholder="O teu nome" aria-label="O teu nome" autocomplete="off">
+<button id="create">Criar sala</button>
+<p class="or">ou entra numa sala</p>
+<div class="row">
+<input id="joinCode" maxlength="4" placeholder="Código" aria-label="Código da sala" autocomplete="off">
+<button id="join">Entrar</button>
+</div>
+</section>
+
+<section id="lobby" hidden>
+<div class="meta"><span>Sala <strong id="code"></strong></span><button id="copy" type="button">Copiar</button></div><p id="size"></p>
+<ul id="players"></ul>
+<p id="hint"></p>
+<div class="row">
+<button id="start">Começar</button>
+<button id="leave">Sair</button>
+</div>
+</section>
+
+<section id="countdown" hidden>
+<p id="num"></p>
+</section>
+
+<section id="race" hidden>
+<p id="racemsg"></p>
+<div id="track"></div>
+<button id="tap">CLICA!</button>
+<p class="or">ou prime a barra de espaço</p>
+</section>
+
+<section id="results" hidden>
+<h2 id="winner"></h2>
+<ul id="ranking"></ul>
+<p id="rhint"></p>
+<div class="row">
+<button id="again">Jogar outra vez</button>
+<button id="exit">Sair</button>
+</div>
+</section>
 </main>
 <script src="/socket.io/socket.io.js"></script>
 <script src="client.js"></script>
